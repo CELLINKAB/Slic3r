@@ -49,6 +49,16 @@ my %cli_options = ();
         
         'scale=f'               => \$opt{scale},
         'rotate=f'              => \$opt{rotate},
+        'sc=f@'                 => \$opt{sc},
+        'sx=f@'                 => \$opt{sx},
+        'sy=f@'                 => \$opt{sy},
+        'sz=f@'                 => \$opt{sz},
+        'rx=f@'                 => \$opt{rx},
+        'ry=f@'                 => \$opt{ry},
+        'rz=f@'                 => \$opt{rz},
+        'tx=f@'                 => \$opt{tx},
+        'ty=f@'                 => \$opt{ty},
+        'tz=f@'                 => \$opt{tz},
         'duplicate=i'           => \$opt{duplicate},
         'duplicate-grid=s'      => \$opt{duplicate_grid},
         'print-center=s'        => \$opt{print_center},
@@ -238,6 +248,16 @@ if (@ARGV) {  # slicing from command line
         my $model;
         if ($opt{merge}) {
             my @models = map Slic3r::Model->read_from_file($_), $input_file, (splice @ARGV, 0);
+            foreach my $i (0 .. $#models) {
+                foreach my $instance (@{$models[$i]->objects}) {
+                    $instance->rotate(deg2rad($opt{rx}[$i] // 0), X);
+                    $instance->rotate(deg2rad($opt{ry}[$i] // 0), Y);
+                    $instance->rotate(deg2rad($opt{rz}[$i] // 0), Z);
+                    my $sc = $opt{sc}[$i] // 1;
+                    $instance->scale_xyz(Slic3r::Pointf3->new($opt{sx}[$i] // $sc, $opt{sy}[$i] // $sc, $opt{sz}[$i] // $sc));
+                    $instance->translate($opt{tx}[$i] // 0, $opt{ty}[$i] // 0, $opt{tz}[$i] // 0);
+                }
+            }
             $model = Slic3r::Model->merge(@models);
         } else {
             $model = Slic3r::Model->read_from_file($input_file);
