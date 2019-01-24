@@ -36,6 +36,7 @@ my %cli_options = ();
         
         'save=s'                => \$opt{save},
         'load=s@'               => \$opt{load},
+        'lm=s@'                 => \$opt{lm},
         'autosave=s'            => \$opt{autosave},
         'ignore-nonexistent-config' => \$opt{ignore_nonexistent_config},
         'datadir=s'             => \$opt{datadir},
@@ -98,6 +99,25 @@ if ($opt{load}) {
     
     # expand shortcuts before applying, otherwise destination values would be already filled with defaults
     $_->normalize for @external_configs;
+}
+
+# load model configuration files
+my @model_configs = ();
+if ($opt{lm}) {
+    foreach my $configfile (@{$opt{lm}}) {
+        $configfile = Slic3r::decode_path($configfile);
+        if (-e Slic3r::encode_path($configfile)) {
+            push @model_configs, Slic3r::Config->load($configfile);
+        } elsif (-e Slic3r::encode_path("$FindBin::Bin/$configfile")) {
+            printf STDERR "Loading $FindBin::Bin/$configfile\n";
+            push @model_configs, Slic3r::Config->load("$FindBin::Bin/$configfile");
+        } else {
+            $opt{ignore_nonexistent_config} or die "Cannot find specified configuration file ($configfile).\n";
+        }
+    }
+
+    # expand shortcuts before applying, otherwise destination values would be already filled with defaults
+    $_->normalize for @model_configs;
 }
 
 # process command line options
@@ -256,6 +276,12 @@ if (@ARGV) {  # slicing from command line
                     my $sc = $opt{sc}[$i] // 1;
                     $instance->scale_xyz(Slic3r::Pointf3->new($opt{sx}[$i] // $sc, $opt{sy}[$i] // $sc, $opt{sz}[$i] // $sc));
                     $instance->translate($opt{tx}[$i] // 0, $opt{ty}[$i] // 0, $opt{tz}[$i] // 0);
+                    if ($model_configs[$i]) {
+                        my $config = Slic3r::Config->new_from_defaults;
+                        $config->apply($model_configs[$i]);
+                        $config->validate;
+                        $instance->config()->apply($config);
+                    }
                 }
             }
             $model = Slic3r::Model->merge(@models);
