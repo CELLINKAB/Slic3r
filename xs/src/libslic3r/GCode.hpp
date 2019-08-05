@@ -85,6 +85,7 @@ class GCode {
     bool enable_cooling_markers;
     size_t layer_count;
     int layer_index; // just a counter
+    int print_layer_index; // just a counter
     const Layer* layer;
     std::map<const PrintObject*,Point> _seam_position;
     bool first_layer; // this flag triggers first layer speeds

@@ -201,7 +201,7 @@ Wipe::wipe(GCode &gcodegen, bool toolchange)
 
 GCode::GCode()
     : placeholder_parser(NULL), enable_loop_clipping(true), enable_cooling_markers(false), layer_count(0),
-        layer_index(-1), layer(NULL), first_layer(false), elapsed_time(0.0),
+        layer_index(-1), print_layer_index(-1), layer(NULL), first_layer(false), elapsed_time(0.0),
         elapsed_time_bridges(0.0), elapsed_time_external(0.0), volumetric_speed(0),
         _last_pos_defined(false)
 {
@@ -271,6 +271,8 @@ GCode::change_layer(const Layer &layer)
 {
     this->layer = &layer;
     this->layer_index++;
+    if (!layer.is_support())
+        this->print_layer_index++;
     this->first_layer = (layer.id() == 0);
     
     // avoid computing islands and overhangs if they're not needed
@@ -487,13 +489,32 @@ GCode::extrude(const ExtrusionPath &path, std::string description, double speed)
     return gcode;
 }
 
+static bool is_support_path(ExtrusionPath path)
+{
+    return path.role == erSupportMaterial || path.role == erSupportMaterialInterface;
+}
+
 std::string
 GCode::_extrude(ExtrusionPath path, std::string description, double speed)
 {
     path.simplify(SCALED_RESOLUTION);
     std::string gcode;
     description = path.is_bridge() ? description + " (bridge)" : description;
-    
+
+    if (path.is_infill() && !this->config.before_infill_gcode.value.empty()) {
+        PlaceholderParser pp = *this->placeholder_parser;
+        pp.set("layer_num", this->print_layer_index);
+        gcode += Slic3r::apply_math(pp.process(this->config.before_infill_gcode.value)) + '\n';
+    } else if (path.is_perimeter() && !this->config.before_perimeter_gcode.value.empty()) {
+        PlaceholderParser pp = *this->placeholder_parser;
+        pp.set("layer_num", this->print_layer_index);
+        gcode += Slic3r::apply_math(pp.process(this->config.before_perimeter_gcode.value)) + '\n';
+    } else if (is_support_path(path) && !this->config.before_support_gcode.value.empty()) {
+        PlaceholderParser pp = *this->placeholder_parser;
+        pp.set("layer_num", this->print_layer_index);
+        gcode += Slic3r::apply_math(pp.process(this->config.before_support_gcode.value)) + '\n';
+    }
+
     // go to first point of extrusion path
     if (!this->_last_pos_defined || !this->_last_pos.coincides_with(path.first_point())) {
         gcode += this->travel_to(
