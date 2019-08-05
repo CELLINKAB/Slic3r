@@ -325,7 +325,10 @@ class PrintRegionConfig : public virtual StaticPrintConfig
 class GCodeConfig : public virtual StaticPrintConfig
 {
     public:
+    ConfigOptionString              before_infill_gcode;
     ConfigOptionString              before_layer_gcode;
+    ConfigOptionString              before_perimeter_gcode;
+    ConfigOptionString              before_support_gcode;
     ConfigOptionString              between_objects_gcode;
     ConfigOptionString              end_gcode;
     ConfigOptionStrings             end_filament_gcode;
@@ -369,7 +372,10 @@ class GCodeConfig : public virtual StaticPrintConfig
     }
     
     virtual ConfigOption* optptr(const t_config_option_key &opt_key, bool create = false) {
+        OPT_PTR(before_infill_gcode);
         OPT_PTR(before_layer_gcode);
+        OPT_PTR(before_perimeter_gcode);
+        OPT_PTR(before_support_gcode);
         OPT_PTR(between_objects_gcode);
         OPT_PTR(end_gcode);
         OPT_PTR(end_filament_gcode);
