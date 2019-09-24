@@ -57,6 +57,10 @@ has 'output_file' => (
     is      => 'rw',
 );
 
+has 'travel_height' => (
+    is      => 'rw',
+);
+
 sub _bed_polygon {
     my ($self) = @_;
     
@@ -110,6 +114,9 @@ sub _before_export {
     my ($self) = @_;
     
     $self->_print->set_status_cb($self->status_cb);
+    if ($self->travel_height) {
+        $self->_print->set_travel_height($self->travel_height);
+    }
     $self->_print->validate;
 }
 
