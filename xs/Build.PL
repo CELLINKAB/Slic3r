@@ -78,7 +78,7 @@ if ($^O eq 'darwin') {
     }
 }
 if ($mswin) {
-    push @cflags, qw(-DNOMINMAX);
+    push @cflags, qw(-DNOMINMAX -DBOOST_ASIO_ENABLE_OLD_SERVICES);
 }
 
 my @INC  = qw(-Isrc/libslic3r);
