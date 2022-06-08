@@ -476,6 +476,7 @@ sub options {
         support_material_interface_extrusion_width infill_overlap bridge_flow_ratio
         xy_size_compensation resolution shortcuts compatible_printers
         print_settings_id
+        enable_loop_clipping
     )
 }
 
@@ -547,6 +548,7 @@ sub build {
             my $optgroup = $page->new_optgroup('Advanced');
             $optgroup->append_single_option_line('seam_position');
             $optgroup->append_single_option_line('external_perimeters_first');
+            $optgroup->append_single_option_line('enable_loop_clipping');
         }
     }
     

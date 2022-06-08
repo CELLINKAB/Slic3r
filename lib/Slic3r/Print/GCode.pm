@@ -15,6 +15,7 @@ has '_brim_done'                     => (is => 'rw');
 has '_second_layer_things_done'      => (is => 'rw');
 has '_last_obj_copy'                 => (is => 'rw');
 has '_autospeed'                     => (is => 'rw', default => sub { 0 });   # boolean
+has '_enable_loop_clipping'          => (is => 'rw');
 
 use List::Util qw(first sum min max);
 use Slic3r::ExtrusionPath ':roles';
@@ -139,6 +140,8 @@ sub export {
     # but we need it for skirt/brim too
     $gcodegen->set_first_layer(1);
     
+    $self->_enable_loop_clipping($self->print->enable_loop_clipping);
+
     # disable fan
     print $fh $gcodegen->writer->set_fan(0, 1)
         if $self->config->cooling && $self->config->disable_fan_first_layers;
@@ -412,7 +415,8 @@ sub process_layer {
     }
     
     # if we're going to apply spiralvase to this layer, disable loop clipping
-    $self->_gcodegen->set_enable_loop_clipping(!defined $self->_spiral_vase || !$self->_spiral_vase->enable);
+    # also disable loop clipping if it has been explicitly disabled
+    $self->_gcodegen->set_enable_loop_clipping((!defined $self->_spiral_vase || !$self->_spiral_vase->enable) && $self->_enable_loop_clipping);
     
     # initialize autospeed
     {

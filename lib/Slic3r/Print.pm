@@ -18,6 +18,7 @@ use Slic3r::Surface qw(S_TYPE_BOTTOM);
 
 our $status_cb;
 our $travel_height;
+our $enable_loop_clipping;
 
 sub set_travel_height {
     my ($class, $th) = @_;
@@ -25,6 +26,15 @@ sub set_travel_height {
 }
 sub travel_height {
     return $travel_height;
+}
+
+sub set_enable_loop_clipping {
+    my ($class, $th) = @_;
+    $enable_loop_clipping = $th; 
+}
+
+sub enable_loop_clipping {
+    return $enable_loop_clipping;
 }
 
 sub set_status_cb {

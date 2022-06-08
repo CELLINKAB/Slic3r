@@ -61,6 +61,10 @@ has 'travel_height' => (
     is      => 'rw',
 );
 
+has 'disable_loop_clipping' => (
+    is      => 'rw',
+);
+
 sub _bed_polygon {
     my ($self) = @_;
     
@@ -116,6 +120,11 @@ sub _before_export {
     $self->_print->set_status_cb($self->status_cb);
     if ($self->travel_height) {
         $self->_print->set_travel_height($self->travel_height);
+    }
+    if ($self->disable_loop_clipping) {
+        $self->_print->set_enable_loop_clipping(0);
+    } else {
+        $self->_print->set_enable_loop_clipping(1);
     }
     $self->_print->validate;
 }
