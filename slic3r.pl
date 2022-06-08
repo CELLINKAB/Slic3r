@@ -65,6 +65,7 @@ my %cli_options = ();
         'print-center=s'        => \$opt{print_center},
         'dont-arrange'          => \$opt{dont_arrange},
         'travel-height=f'       => \$opt{travel_height},
+        'disable-loop-clipping'  => \$opt{disable_loop_clipping},
 
         # legacy options, ignored
         'no-plater'             => \$opt{no_plater},
@@ -311,6 +312,7 @@ if (@ARGV) {  # slicing from command line
             print_center    => $opt{print_center},
             dont_arrange    => $opt{dont_arrange}   // 0,
             travel_height   => $opt{travel_height},
+            disable_loop_clipping => $opt{disable_loop_clipping},
             status_cb       => sub {
                 my ($percent, $message) = @_;
                 printf "=> %s\n", $message;
@@ -519,6 +521,7 @@ $j
     --infill-only-where-needed
                         Only infill under ceilings (default: no)
     --infill-first      Make infill before perimeters (default: no)
+    --disable-loop-clipping Clip ends of loops to avoid overlapping extrusion (default: no)
   
    Quality options (slower slicing):
     --extra-perimeters  Add more perimeters when needed (default: yes)
