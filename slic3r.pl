@@ -36,6 +36,7 @@ my %cli_options = ();
         
         'save=s'                => \$opt{save},
         'load=s@'               => \$opt{load},
+        'lm=s@'                 => \$opt{lm},
         'autosave=s'            => \$opt{autosave},
         'ignore-nonexistent-config' => \$opt{ignore_nonexistent_config},
         'datadir=s'             => \$opt{datadir},
@@ -51,11 +52,23 @@ my %cli_options = ();
         'rotate=f'              => \$opt{rotate},
         'rotate-x=f'            => \$opt{rotate_x},
         'rotate-y=f'            => \$opt{rotate_y},
+        'sc=f@'                 => \$opt{sc},
+        'sx=f@'                 => \$opt{sx},
+        'sy=f@'                 => \$opt{sy},
+        'sz=f@'                 => \$opt{sz},
+        'rx=f@'                 => \$opt{rx},
+        'ry=f@'                 => \$opt{ry},
+        'rz=f@'                 => \$opt{rz},
+        'tx=f@'                 => \$opt{tx},
+        'ty=f@'                 => \$opt{ty},
+        'tz=f@'                 => \$opt{tz},
         'duplicate=i'           => \$opt{duplicate},
         'duplicate-grid=s'      => \$opt{duplicate_grid},
         'print-center=s'        => \$opt{print_center},
         'dont-arrange'          => \$opt{dont_arrange},
-        
+        'travel-height=f'       => \$opt{travel_height},
+        'disable-loop-clipping'  => \$opt{disable_loop_clipping},
+
         # legacy options, ignored
         'no-plater'             => \$opt{no_plater},
         'gui-mode=s'            => \$opt{gui_mode},
@@ -90,6 +103,25 @@ if ($opt{load}) {
     
     # expand shortcuts before applying, otherwise destination values would be already filled with defaults
     $_->normalize for @external_configs;
+}
+
+# load model configuration files
+my @model_configs = ();
+if ($opt{lm}) {
+    foreach my $configfile (@{$opt{lm}}) {
+        $configfile = Slic3r::decode_path($configfile);
+        if (-e Slic3r::encode_path($configfile)) {
+            push @model_configs, Slic3r::Config->load($configfile);
+        } elsif (-e Slic3r::encode_path("$FindBin::Bin/$configfile")) {
+            printf STDERR "Loading $FindBin::Bin/$configfile\n";
+            push @model_configs, Slic3r::Config->load("$FindBin::Bin/$configfile");
+        } else {
+            $opt{ignore_nonexistent_config} or die "Cannot find specified configuration file ($configfile).\n";
+        }
+    }
+
+    # expand shortcuts before applying, otherwise destination values would be already filled with defaults
+    $_->normalize for @model_configs;
 }
 
 # process command line options
@@ -240,6 +272,22 @@ if (@ARGV) {  # slicing from command line
         my $model;
         if ($opt{merge}) {
             my @models = map Slic3r::Model->read_from_file($_), $input_file, (splice @ARGV, 0);
+            foreach my $i (0 .. $#models) {
+                foreach my $instance (@{$models[$i]->objects}) {
+                    $instance->rotate(deg2rad($opt{rx}[$i] // 0), X);
+                    $instance->rotate(deg2rad($opt{ry}[$i] // 0), Y);
+                    $instance->rotate(deg2rad($opt{rz}[$i] // 0), Z);
+                    my $sc = $opt{sc}[$i] // 1;
+                    $instance->scale_xyz(Slic3r::Pointf3->new($opt{sx}[$i] // $sc, $opt{sy}[$i] // $sc, $opt{sz}[$i] // $sc));
+                    $instance->translate($opt{tx}[$i] // 0, $opt{ty}[$i] // 0, $opt{tz}[$i] // 0);
+                    if ($model_configs[$i]) {
+                        my $config = Slic3r::Config->new_from_defaults;
+                        $config->apply($model_configs[$i]);
+                        $config->validate;
+                        $instance->config()->apply($config);
+                    }
+                }
+            }
             $model = Slic3r::Model->merge(@models);
         } else {
             $model = Slic3r::Model->read_from_file($input_file);
@@ -267,6 +315,8 @@ if (@ARGV) {  # slicing from command line
             duplicate_grid  => $opt{duplicate_grid} // [1,1],
             print_center    => $opt{print_center},
             dont_arrange    => $opt{dont_arrange}   // 0,
+            travel_height   => $opt{travel_height},
+            disable_loop_clipping => $opt{disable_loop_clipping},
             status_cb       => sub {
                 my ($percent, $message) = @_;
                 printf "=> %s\n", $message;
@@ -475,6 +525,7 @@ $j
     --infill-only-where-needed
                         Only infill under ceilings (default: no)
     --infill-first      Make infill before perimeters (default: no)
+    --disable-loop-clipping Clip ends of loops to avoid overlapping extrusion (default: no)
   
    Quality options (slower slicing):
     --extra-perimeters  Add more perimeters when needed (default: yes)

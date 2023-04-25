@@ -15,6 +15,7 @@ has '_brim_done'                     => (is => 'rw');
 has '_second_layer_things_done'      => (is => 'rw');
 has '_last_obj_copy'                 => (is => 'rw');
 has '_autospeed'                     => (is => 'rw', default => sub { 0 });   # boolean
+has '_enable_loop_clipping'          => (is => 'rw');
 
 use List::Util qw(first sum min max);
 use Slic3r::ExtrusionPath ':roles';
@@ -139,6 +140,8 @@ sub export {
     # but we need it for skirt/brim too
     $gcodegen->set_first_layer(1);
     
+    $self->_enable_loop_clipping($self->print->enable_loop_clipping);
+
     # disable fan
     print $fh $gcodegen->writer->set_fan(0, 1)
         if $self->config->cooling && $self->config->disable_fan_first_layers;
@@ -239,21 +242,23 @@ sub export {
                 # move to the origin position for the copy we're going to print.
                 # this happens before Z goes down to layer 0 again, so that 
                 # no collision happens hopefully.
-                if ($finished_objects > 0) {
-                    $gcodegen->set_origin(Slic3r::Pointf->new(map unscale $copy->[$_], X,Y));
-                    $gcodegen->set_enable_cooling_markers(0);  # we're not filtering these moves through CoolingBuffer
-                    $gcodegen->avoid_crossing_perimeters->set_use_external_mp_once(1);
-                    print $fh $gcodegen->retract;
-                    print $fh $gcodegen->travel_to(
-                        Slic3r::Point->new(0,0),
-                        EXTR_ROLE_NONE,
-                        'move to origin position for next object',
-                    );
-                    $gcodegen->set_enable_cooling_markers(1);
-                    
-                    # disable motion planner when traveling to first object point
-                    $gcodegen->avoid_crossing_perimeters->set_disable_once(1);
+                $gcodegen->set_origin(Slic3r::Pointf->new(map unscale $copy->[$_], X,Y));
+                $gcodegen->set_enable_cooling_markers(0);  # we're not filtering these moves through CoolingBuffer
+                $gcodegen->avoid_crossing_perimeters->set_use_external_mp_once(1);
+                print $fh $gcodegen->retract;
+                if ($self->print->travel_height) {
+                    printf $fh "G1 Z%.f 1200 ; Move the bed down to the specified height when traveling between complete objects\n",
+                        $self->print->travel_height;
                 }
+                print $fh $gcodegen->travel_to(
+                    Slic3r::Point->new(0,0),
+                    EXTR_ROLE_NONE,
+                    'move to origin position for next object',
+                );
+                $gcodegen->set_enable_cooling_markers(1);
+                
+                # disable motion planner when traveling to first object point
+                $gcodegen->avoid_crossing_perimeters->set_disable_once(1);
                 
                 my @layers = sort { $a->print_z <=> $b->print_z } @{$object->layers}, @{$object->support_layers};
                 for my $layer (@layers) {
@@ -411,7 +416,8 @@ sub process_layer {
     }
     
     # if we're going to apply spiralvase to this layer, disable loop clipping
-    $self->_gcodegen->set_enable_loop_clipping(!defined $self->_spiral_vase || !$self->_spiral_vase->enable);
+    # also disable loop clipping if it has been explicitly disabled
+    $self->_gcodegen->set_enable_loop_clipping((!defined $self->_spiral_vase || !$self->_spiral_vase->enable) && $self->_enable_loop_clipping);
     
     # initialize autospeed
     {

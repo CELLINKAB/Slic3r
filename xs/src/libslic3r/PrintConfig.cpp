@@ -77,6 +77,13 @@ PrintConfigDef::PrintConfigDef()
     def->max = 300;
     def->default_value = new ConfigOptionInt(0);
 
+    def = this->add("before_infill_gcode", coString);
+    def->label = __TRANS("Before infill G-code");
+    def->category = __TRANS("Infill");
+    def->tooltip = __TRANS("This custom code is inserted before infill.");
+    def->cli = "before-infill-gcode=s";
+    def->default_value = new ConfigOptionString("");
+
     def = this->add("before_layer_gcode", coString);
     def->label = __TRANS("Before layer change G-code");
     def->tooltip = __TRANS("This custom code is inserted at every layer change, right before the Z move. Note that you can use placeholder variables for all Slic3r settings as well as [layer_num], [layer_z] and [current_retraction].");
@@ -86,6 +93,13 @@ PrintConfigDef::PrintConfigDef()
     def->height = 50;
     def->default_value = new ConfigOptionString("");
 
+    def = this->add("before_perimeter_gcode", coString);
+    def->label = __TRANS("Before perimeter G-code");
+    def->category = __TRANS("Layers and Perimeters");
+    def->tooltip = __TRANS("This custom code is inserted before perimeter.");
+    def->cli = "before-perimeter-gcode=s";
+    def->default_value = new ConfigOptionString("");
+
     def = this->add("between_objects_gcode", coString);
     def->label = __TRANS("Between objects G-code");
     def->tooltip = __TRANS("This code is inserted between objects when using sequential printing. By default extruder and bed temperature are reset using non-wait command; however if M104, M109, M140 or M190 are detected in this custom code, Slic3r will not add temperature commands. Note that you can use placeholder variables for all Slic3r settings, so you can put a \"M109 S[first_layer_temperature]\" command wherever you want.");
@@ -93,6 +107,13 @@ PrintConfigDef::PrintConfigDef()
     def->multiline = true;
     def->full_width = true;
     def->height = 120;
+    def->default_value = new ConfigOptionString("");
+
+    def = this->add("before_support_gcode", coString);
+    def->label = __TRANS("Before support G-code");
+    def->category = __TRANS("Support material");
+    def->tooltip = __TRANS("This custom code is inserted before support.");
+    def->cli = "before-support-gcode=s";
     def->default_value = new ConfigOptionString("");
 
     def = this->add("bottom_infill_pattern", external_fill_pattern);

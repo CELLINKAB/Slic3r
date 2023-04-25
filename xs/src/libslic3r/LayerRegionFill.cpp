@@ -198,7 +198,8 @@ LayerRegion::make_fill()
         f->bounding_box = this->layer()->object()->bounding_box();
         
         // calculate the actual flow we'll be using for this infill
-        coordf_t h = (surface.thickness == -1) ? this->layer()->height : surface.thickness;
+        coordf_t h = (surface.thickness != -1) ? surface.thickness :
+                     (this->layer()->id() == 0 && this->layer()->upper_layer) ? this->layer()->upper_layer->height : this->layer()->height;
         Flow flow = this->region()->flow(
             role,
             h,
