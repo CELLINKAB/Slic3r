@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <boost/config.hpp>
 #include <boost/nowide/convert.hpp>
+#include <boost/bind.hpp>
 
 #ifdef SLIC3R_DEBUG
 #include "SVG.hpp"
