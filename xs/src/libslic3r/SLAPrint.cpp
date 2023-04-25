@@ -7,6 +7,7 @@
 #include <iostream>
 #include <complex>
 #include <cstdio>
+#include <boost/bind.hpp>
 
 namespace Slic3r {
 
