@@ -6,6 +6,7 @@
 #include <map>
 #include <numeric>
 #include <vector>
+#include <boost/bind.hpp>
 
 #include "libslic3r.h"
 
