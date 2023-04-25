@@ -1,16 +1,21 @@
-cmake_minimum_required (VERSION 3.9)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 project (slic3r)
 
 option(Enable_GUI "Use the wxWidgets code in slic3r.cpp" OFF)
-option(GUI_BUILD_TESTS "Build tests for Slic3r GUI." ON)
+option(GUI_BUILD_TESTS "Build tests for Slic3r GUI." OFF)
 option(SLIC3R_BUILD_TESTS "Build tests for libslic3r." ON)
 option(SLIC3R_STATIC "Build and link Slic3r statically." ON)
 option(BUILD_EXTRUDE_TIN "Build and link the extrude-tin application." OFF)
 option(PROFILE "Build with gprof profiling output." OFF)
 option(COVERAGE "Build with gcov code coverage profiling." OFF)
+option(SLIC3R_DEBUG "Build with Slic3r's debug output" OFF)
 
 # only on newer GCCs: -ftemplate-backtrace-limit=0
-add_compile_options(-DNO_PERL  -DM_PI=3.14159265358979323846 -D_GLIBCXX_USE_C99 -DHAS_BOOL -DNOGDI -DBOOST_ASIO_DISABLE_KQUEUE)
+add_compile_options(-ftemplate-backtrace-limit=0)
+add_compile_options(-DNO_PERL -DM_PI=3.14159265358979323846 -DHAS_BOOL -DNOGDI -DBOOST_ASIO_DISABLE_KQUEUE)
+if(SLIC3R_DEBUG)
+    add_compile_options(-DSLIC3R_DEBUG)
+endif()
 
 if (MSVC)
     add_compile_options(-W3)
@@ -114,7 +119,13 @@ endif(NOT GIT_VERSION STREQUAL "")
 
 find_package(Threads REQUIRED)
 
+set(Boost_NO_BOOST_CMAKE ON)
 find_package(Boost REQUIRED COMPONENTS system thread filesystem)
+
+if (NOT (${Boost_VERSION_STRING} VERSION_LESS "1.74.0"))
+    MESSAGE("Adding in boost::nowide")
+    find_package(Boost REQUIRED COMPONENTS system thread filesystem OPTIONAL_COMPONENTS nowide)
+endif()
 
 set(LIBDIR ${CMAKE_CURRENT_SOURCE_DIR}/../xs/src/)
 set(GUI_LIBDIR ${CMAKE_CURRENT_SOURCE_DIR}/GUI/)
@@ -160,6 +171,10 @@ set(LIBSLIC3R_INCLUDES
 
 add_library(ZipArchive STATIC
     ${LIBDIR}/Zip/ZipArchive.cpp
+)
+
+add_library(miniz STATIC
+    ${LIBDIR}/miniz/miniz.c
 )
 target_compile_features(ZipArchive PUBLIC cxx_std_11)
 target_include_directories(ZipArchive PUBLIC ${COMMON_INCLUDES})
@@ -223,12 +238,17 @@ add_library(libslic3r STATIC
     ${LIBDIR}/libslic3r/SurfaceCollection.cpp
     ${LIBDIR}/libslic3r/SVG.cpp
     ${LIBDIR}/libslic3r/TriangleMesh.cpp
+    ${LIBDIR}/libslic3r/TransformationMatrix.cpp
     ${LIBDIR}/libslic3r/SupportMaterial.cpp
     ${LIBDIR}/libslic3r/utils.cpp
+    ${LIBDIR}/libslic3r/miniz_extension.cpp
 )
 target_compile_features(libslic3r PUBLIC cxx_std_11)
 target_include_directories(libslic3r SYSTEM PUBLIC ${SLIC3R_INCLUDES})
 target_include_directories(libslic3r PUBLIC ${LIBSLIC3R_INCLUDES})
+if (BOOST_NOWIDE_FOUND)
+    target_compile_options(libslic3r -DBOOST_INCLUDE_NOWIDE)
+endif()
 
 add_library(BSpline STATIC
     ${LIBDIR}/BSpline/BSpline.cpp
@@ -314,9 +334,11 @@ set(SLIC3R_TEST_SOURCES
     ${TESTDIR}/libslic3r/test_printobject.cpp
     ${TESTDIR}/libslic3r/test_skirt_brim.cpp
     ${TESTDIR}/libslic3r/test_test_data.cpp
+    ${TESTDIR}/libslic3r/test_transformationmatrix.cpp
     ${TESTDIR}/libslic3r/test_trianglemesh.cpp
     ${TESTDIR}/libslic3r/test_extrusion_entity.cpp
     ${TESTDIR}/libslic3r/test_3mf.cpp
+    ${TESTDIR}/libslic3r/test_amf.cpp
 )
 
 
@@ -330,7 +352,6 @@ cmake_policy(SET CMP0072 NEW)
 endif (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} VERSION_GREATER 3.10)
 
 
-find_package(OpenGL)
 
 if(SLIC3R_STATIC)
     set(Boost_USE_STATIC_LIBS ON)
@@ -356,15 +377,19 @@ endif(SLIC3R_STATIC)
 set_target_properties(bthread PROPERTIES IMPORTED_LOCATION ${bthread_l})
 include_directories(${Boost_INCLUDE_DIRS})
 
+if (Enable_GUI)
 if(SLIC3R_STATIC)
     set(wxWidgets_USE_STATIC ON)
 else(SLIC3R_STATIC)
     set(wxWidgets_USE_STATIC OFF)
 endif(SLIC3R_STATIC)
+endif()
 
+if (Enable_GUI)
+find_package(OpenGL)
 set(wxWidgets_USE_UNICODE ON)
-
 find_package(wxWidgets COMPONENTS net gl html aui adv core base)
+endif()
 
 IF(CMAKE_HOST_UNIX)
     #set(Boost_LIBRARIES bsystem bthread bfilesystem)
@@ -379,6 +404,7 @@ set(LIBSLIC3R_DEPENDS
     polypartition
     poly2tri
     ZipArchive
+    miniz
     ${Boost_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT} 
 )
@@ -496,15 +522,17 @@ endif()
 
 # Windows needs a compiled component for Boost.nowide
 IF (WIN32)
-    add_library(boost-nowide STATIC 
-        ${LIBDIR}/boost/nowide/iostream.cpp
-    )
-    if(MSVC)
-        # Tell boost pragmas to not rename nowide as we are building it
-        add_definitions(-DBOOST_NOWIDE_NO_LIB)
-    endif()    
-    target_link_libraries(slic3r boost-nowide)
-    target_include_directories(boost-nowide PUBLIC ${COMMON_INCLUDES})
+    if (NOT BOOST_NOWIDE_FOUND)
+        add_library(boost-nowide STATIC 
+            ${LIBDIR}/boost/nowide/iostream.cpp
+        )
+        if(MSVC)
+            # Tell boost pragmas to not rename nowide as we are building it
+            add_definitions(-DBOOST_NOWIDE_NO_LIB)
+        endif()    
+        target_link_libraries(slic3r boost-nowide)
+        target_include_directories(boost-nowide PUBLIC ${COMMON_INCLUDES})
+    endif()
 
     # MinGW apparently has some multiple definitions of UUID-related items
     # deal with it.

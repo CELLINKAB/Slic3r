@@ -1,15 +1,22 @@
 #include "../IO.hpp"
 #include <iostream>
 #include <fstream>
-#include <string.h>
+#include <cstring>
 #include <map>
 #include <string>
 #include <boost/move/move.hpp>
 #include <boost/nowide/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/nowide/iostream.hpp>
+#include <boost/algorithm/string.hpp>
 #include <expat/expat.h>
+#include <miniz/miniz.h>
+#include "../Exception.hpp"
+#include "miniz_extension.hpp"
 
 namespace Slic3r { namespace IO {
+bool load_amf_archive(const char* path, Model* model, bool check_version);
+bool extract_model_from_archive(mz_zip_archive& archive, const mz_zip_archive_file_stat& stat, Model* model, bool check_version);
 
 struct AMFParserContext
 {
@@ -125,7 +132,7 @@ struct AMFParserContext
     std::vector<AMFNodeType> m_path;
     // Current object allocated for an amf/object XML subtree.
     ModelObject             *m_object;
-    // Map from obect name to object idx & instances.
+    // Map from object name to object idx & instances.
     std::map<std::string, Object> m_object_instances_map;
     // Vertices parsed for the current m_object.
     std::vector<float>       m_object_vertices;
@@ -344,9 +351,13 @@ void AMFParserContext::endElement(const char *name)
     // Faces of the current volume:
     case NODE_TYPE_TRIANGLE:
         assert(m_object && m_volume);
-        m_volume_facets.push_back(atoi(m_value[0].c_str()));
-        m_volume_facets.push_back(atoi(m_value[1].c_str()));
-        m_volume_facets.push_back(atoi(m_value[2].c_str()));
+        if (strtoul(m_value[0].c_str(), nullptr, 10) < m_object_vertices.size() &&
+            strtoul(m_value[1].c_str(), nullptr, 10) < m_object_vertices.size() &&
+            strtoul(m_value[2].c_str(), nullptr, 10) < m_object_vertices.size()) {
+            m_volume_facets.push_back(atoi(m_value[0].c_str()));
+            m_volume_facets.push_back(atoi(m_value[1].c_str()));
+            m_volume_facets.push_back(atoi(m_value[2].c_str()));
+        }
         m_value[0].clear();
         m_value[1].clear();
         m_value[2].clear();
@@ -450,6 +461,20 @@ void AMFParserContext::endDocument()
 bool
 AMF::read(std::string input_file, Model* model)
 {
+    // Quick and dirty hack from PrusaSlic3r's AMF deflate
+    if (boost::iends_with(input_file.c_str(), ".amf")) {
+        boost::nowide::ifstream file(input_file.c_str(), boost::nowide::ifstream::binary);
+        if (!file.good())
+            return false;
+
+        char buffer[3];
+        file.read(buffer, 2);
+        buffer[2] = '\0';
+        file.close();
+        if (std::strcmp(buffer, "PK") == 0)
+            return load_amf_archive(input_file.c_str(), model, false);
+    }
+
     XML_Parser parser = XML_ParserCreate(NULL); // encoding
     if (! parser) {
         printf("Couldn't allocate memory for parser\n");
@@ -538,6 +563,8 @@ AMF::write(const Model& model, std::string output_file)
         
         std::vector<size_t> vertices_offsets;
         size_t num_vertices = 0;
+
+        Pointf3 origin_translation = object->origin_translation();
         
         for (ModelVolume *volume : object->volumes) {
             volume->mesh.require_shared_vertices();
@@ -552,9 +579,9 @@ AMF::write(const Model& model, std::string output_file)
                 // below.
                 file << "         <vertex>" << endl
                      << "           <coordinates>" << endl
-                     << "             <x>" << (stl.v_shared[i].x - object->origin_translation.x) << "</x>" << endl
-                     << "             <y>" << (stl.v_shared[i].y - object->origin_translation.y) << "</y>" << endl
-                     << "             <z>" << (stl.v_shared[i].z - object->origin_translation.z) << "</z>" << endl
+                     << "             <x>" << (stl.v_shared[i].x - origin_translation.x) << "</x>" << endl
+                     << "             <y>" << (stl.v_shared[i].y - origin_translation.y) << "</y>" << endl
+                     << "             <z>" << (stl.v_shared[i].z - origin_translation.z) << "</z>" << endl
                      << "           </coordinates>" << endl
                      << "         </vertex>" << endl;
             
@@ -597,8 +624,8 @@ AMF::write(const Model& model, std::string output_file)
         for (const ModelInstance* instance : object->instances)
             instances
                 << "    <instance objectid=\"" << object_id << "\">" << endl
-                << "      <deltax>" << instance->offset.x + object->origin_translation.x << "</deltax>" << endl
-                << "      <deltay>" << instance->offset.y + object->origin_translation.y << "</deltay>" << endl
+                << "      <deltax>" << instance->offset.x + origin_translation.x << "</deltax>" << endl
+                << "      <deltay>" << instance->offset.y + origin_translation.y << "</deltay>" << endl
                 << "      <rz>" << instance->rotation << "</rz>" << endl
                 << "      <scale>" << instance->scaling_factor << "</scale>" << endl
                 << "    </instance>" << endl;
@@ -615,5 +642,134 @@ AMF::write(const Model& model, std::string output_file)
     file.close();
     return true;
 }
+
+bool extract_model_from_archive(mz_zip_archive& archive, const mz_zip_archive_file_stat& stat, Model* model, bool check_version)
+{
+    if (stat.m_uncomp_size == 0)
+    {
+        printf("Found invalid size\n");
+        close_zip_reader(&archive);
+        return false;
+    }
+
+    XML_Parser parser = XML_ParserCreate(nullptr); // encoding
+    if (!parser) {
+        printf("Couldn't allocate memory for parser\n");
+        close_zip_reader(&archive);
+        return false;
+    }
+
+    AMFParserContext ctx(parser, model);
+    XML_SetUserData(parser, (void*)&ctx);
+    XML_SetElementHandler(parser, AMFParserContext::startElement, AMFParserContext::endElement);
+    XML_SetCharacterDataHandler(parser, AMFParserContext::characters);
+
+    struct CallbackData
+    {
+        XML_Parser& parser;
+        const mz_zip_archive_file_stat& stat;
+
+        CallbackData(XML_Parser& parser, const mz_zip_archive_file_stat& stat) : parser(parser), stat(stat) {}
+    };
+
+    CallbackData data(parser, stat);
+
+    mz_bool res = 0;
+
+    try
+    {
+        res = mz_zip_reader_extract_file_to_callback(&archive, stat.m_filename, [](void* pOpaque, mz_uint64 file_ofs, const void* pBuf, size_t n)->size_t {
+            CallbackData* data = (CallbackData*)pOpaque;
+            if (!XML_Parse(data->parser, (const char*)pBuf, (int)n, (file_ofs + n == data->stat.m_uncomp_size) ? 1 : 0))
+            {
+                char error_buf[1024];
+                ::sprintf(error_buf, "Error (%s) while parsing '%s' at line %d", XML_ErrorString(XML_GetErrorCode(data->parser)), data->stat.m_filename, (int)XML_GetCurrentLineNumber(data->parser));
+                throw Slic3r::FileIOError(error_buf);
+            }
+
+            return n;
+            }, &data, 0);
+    }
+    catch (std::exception& e)
+    {
+        printf("%s\n", e.what());
+        close_zip_reader(&archive);
+        return false;
+    }
+
+    if (res == 0)
+    {
+        printf("Error while extracting model data from zip archive");
+        close_zip_reader(&archive);
+        return false;
+    }
+
+    ctx.endDocument();
+
+    return true;
+}
+
+// Load an AMF archive into a provided model.
+bool load_amf_archive(const char* path, Model* model, bool check_version)
+{
+    if ((path == nullptr) || (model == nullptr))
+        return false;
+
+    mz_zip_archive archive;
+    mz_zip_zero_struct(&archive);
+
+    if (!open_zip_reader(&archive, path))
+    {
+        printf("Unable to init zip reader\n");
+        return false;
+    }
+
+    mz_uint num_entries = mz_zip_reader_get_num_files(&archive);
+
+    mz_zip_archive_file_stat stat;
+    // we first loop the entries to read from the archive the .amf file only, in order to extract the version from it
+    for (mz_uint i = 0; i < num_entries; ++i)
+    {
+        if (mz_zip_reader_file_stat(&archive, i, &stat))
+        {
+            if (boost::iends_with(stat.m_filename, ".amf"))
+            {
+                try
+                {
+                    if (!extract_model_from_archive(archive, stat, model, check_version))
+                    {
+                        close_zip_reader(&archive);
+                        printf("Archive does not contain a valid model");
+                        return false;
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    // ensure the zip archive is closed and rethrow the exception
+                    close_zip_reader(&archive);
+                    throw std::runtime_error(e.what());
+                }
+
+                break;
+            }
+        }
+    }
+
+#if 0 // forward compatibility
+    // we then loop again the entries to read other files stored in the archive
+    for (mz_uint i = 0; i < num_entries; ++i)
+    {
+        if (mz_zip_reader_file_stat(&archive, i, &stat))
+        {
+            // add code to extract the file
+        }
+    }
+#endif // forward compatibility
+
+    close_zip_reader(&archive);
+
+    return true;
+}
+
 
 } }
