@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <vector>
 #include <limits>
+#include <boost/bind.hpp>
 
 namespace Slic3r {
 
