@@ -52,7 +52,7 @@ MotionPlanner::initialize()
     
     // generate outer contour as bounding box of everything
     BoundingBox bb;
-    for (const Polygon &contour : outer_holes)
+    for (const Polygon contour : outer_holes)
         bb.merge(contour.bounding_box());
     
     // grow outer contour
