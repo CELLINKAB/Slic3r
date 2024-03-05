@@ -8,6 +8,8 @@
 #include <limits>
 #include <boost/bind.hpp>
 
+using namespace boost::placeholders;
+
 namespace Slic3r {
 
 PrintObject::PrintObject(Print* print, ModelObject* model_object, const BoundingBoxf3 &modobj_bbox)
@@ -1183,13 +1185,12 @@ PrintObject::make_perimeters()
             }
         }
     }
-    
-    parallelize<Layer*>(
-        std::queue<Layer*>(std::deque<Layer*>(this->layers.begin(), this->layers.end())),  // cast LayerPtrs to std::queue<Layer*>
+
+    parallelize<Layer *>(
+        std::queue<Layer *>(std::deque<Layer *>(this->layers.begin(), this->layers.end())), // cast LayerPtrs to std::queue<Layer*>
         boost::bind(&Slic3r::Layer::make_perimeters, _1),
-        this->_print->config.threads.value
-    );
-    
+        this->_print->config.threads.value);
+
     /*
         simplify slices (both layer and region slices),
         we only need the max resolution for perimeters
@@ -1208,13 +1209,12 @@ PrintObject::infill()
     
     // prerequisites
     this->prepare_infill();
-    
-    parallelize<Layer*>(
-        std::queue<Layer*>(std::deque<Layer*>(this->layers.begin(), this->layers.end())),  // cast LayerPtrs to std::queue<Layer*>
+
+    parallelize<Layer *>(
+        std::queue<Layer *>(std::deque<Layer *>(this->layers.begin(), this->layers.end())), // cast LayerPtrs to std::queue<Layer*>
         boost::bind(&Slic3r::Layer::make_fills, _1),
-        this->_print->config.threads.value
-    );
-    
+        this->_print->config.threads.value);
+
     /*  we could free memory now, but this would make this step not idempotent
     ### $_->fill_surfaces->clear for map @{$_->regions}, @{$object->layers};
     */

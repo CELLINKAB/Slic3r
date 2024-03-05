@@ -9,17 +9,12 @@
 #include <algorithm>
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/replace.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <thread>
 #include <sstream>
-
-#ifdef __cpp_lib_quoted_string_io
-    #include <iomanip>
-#else
-    #include <boost/algorithm/string.hpp>
-#endif
 
 namespace Slic3r {
 
@@ -724,15 +719,12 @@ Print::export_gcode(std::string outfile, bool quiet)
             this->status_cb(95, "Running post-processing scripts...");
         
         this->config.setenv_();
-        for (std::string ppscript : this->config.post_process.values) {
-            #ifdef __cpp_lib_quoted_string_io
-                ppscript += " " + std::quoted(outfile);
-            #else
-                boost::replace_all(ppscript, "\"", "\\\"");
-                ppscript += " \"" + outfile + "\"";
-            #endif
+        for (std::string ppscript : this->config.post_process.values)
+        {
+            boost::replace_all(ppscript, "\"", "\\\"");
+            ppscript += " \"" + outfile + "\"";
             system(ppscript.c_str());
-        
+
             // TODO: system() should be only used if user enabled an option for explicitly
             // supporting arguments, otherwise we should use exec*() and call the executable
             // directly without launching a shell. #4000

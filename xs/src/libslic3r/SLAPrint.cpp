@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <boost/bind.hpp>
 
+using namespace boost::placeholders;
+
 namespace Slic3r {
 
 void
