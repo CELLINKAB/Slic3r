@@ -7,16 +7,26 @@
 #include <iostream>
 #include <complex>
 #include <cstdio>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 107300
+#include <boost/bind/bind.hpp>
+#endif
 
 using namespace boost::placeholders;
 
 namespace Slic3r {
+
+#if BOOST_VERSION >= 107300
+using boost::placeholders::_1;
+#endif
 
 void
 SLAPrint::slice()
 {
     TriangleMesh mesh = this->model->mesh();
     mesh.repair();
+    
+    mesh.align_to_bed();
     
     // align to origin taking raft into account
     this->bb = mesh.bounding_box();
@@ -26,8 +36,6 @@ SLAPrint::slice()
         this->bb.max.x += this->config.raft_offset.value;
         this->bb.max.y += this->config.raft_offset.value;
     }
-    mesh.translate(0, 0, -bb.min.z);
-    this->bb.translate(0, 0, -bb.min.z);
     
     // if we are generating a raft, first_layer_height will not affect mesh slicing
     const float lh       = this->config.layer_height.value;
@@ -222,7 +230,7 @@ SLAPrint::write_svg(const std::string &outputfile) const
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
         "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.0//EN\" \"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\">\n"
         "<svg width=\"%f\" height=\"%f\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:slic3r=\"http://slic3r.org/namespaces/slic3r\" viewport-fill=\"black\">\n"
-        "<!-- Generated using Slic3r %s http://slic3r.org/ -->\n"
+        "<!-- Generated using Slic3r %s https://slic3r.org/ -->\n"
         , size.x, size.y, SLIC3R_VERSION);
     
     for (size_t i = 0; i < this->layers.size(); ++i) {

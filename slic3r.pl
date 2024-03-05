@@ -190,7 +190,7 @@ if (@ARGV) {  # slicing from command line
             my $model = Slic3r::Model->read_from_file($file);
             $model->add_default_instances;
             my $mesh = $model->mesh;
-            $mesh->translate(0, 0, -$mesh->bounding_box->z_min);
+            $mesh->align_to_bed();
             my $upper = Slic3r::TriangleMesh->new;
             my $lower = Slic3r::TriangleMesh->new;
             $mesh->cut(Z, $opt{cut}, $upper, $lower);
@@ -211,8 +211,8 @@ if (@ARGV) {  # slicing from command line
             my $model = Slic3r::Model->read_from_file($file);
             $model->add_default_instances;
             my $mesh = $model->mesh;
+            $mesh->align_to_bed();
             my $bb = $mesh->bounding_box;
-            $mesh->translate(0, 0, -$bb->z_min);
             
             my $x_parts = ceil(($bb->size->x - epsilon)/$grid_x);
             my $y_parts = ceil(($bb->size->y - epsilon)/$grid_y); #--
@@ -307,6 +307,8 @@ if (@ARGV) {  # slicing from command line
         my $sprint = Slic3r::Print::Simple->new(
             scale           => $opt{scale}          // 1,
             rotate          => deg2rad($opt{rotate} // 0),
+            rotate_x        => deg2rad($opt{rotate_x} // 0),
+            rotate_y        => deg2rad($opt{rotate_y} // 0),
             duplicate       => $opt{duplicate}      // 1,
             duplicate_grid  => $opt{duplicate_grid} // [1,1],
             print_center    => $opt{print_center},
@@ -358,7 +360,7 @@ EOF
     
     print <<"EOF";
 Slic3r $Slic3r::VERSION is a STL-to-GCODE translator for RepRap 3D printers
-written by Alessandro Ranellucci <aar\@cpan.org> - http://slic3r.org/
+written by Alessandro Ranellucci <aar\@cpan.org> - https://slic3r.org/
 
 Usage: slic3r.pl [ OPTIONS ] [ file.stl ] [ file2.stl ] ...
 
@@ -612,7 +614,9 @@ $j
    
    Transform options:
     --scale             Factor for scaling input object (default: 1)
-    --rotate            Rotation angle in degrees (0-360, default: 0)
+    --rotate            Rotation angle in degrees around Z (default: 0)
+    --rotate-x          Rotation angle in degrees around X (default: 0)
+    --rotate-y          Rotation angle in degrees around Y (default: 0)
     --duplicate         Number of items with auto-arrange (1+, default: 1)
     --duplicate-grid    Number of items with grid arrangement (default: 1,1)
     --duplicate-distance Distance in mm between copies (default: $config->{duplicate_distance})

@@ -105,7 +105,7 @@ template<> inline t_config_enum_values ConfigOptionEnum<SeamPosition>::get_enum_
     return keys_map;
 }
 
-// Defines each and every confiuration option of Slic3r, including the properties of the GUI dialogs.
+// Defines each and every configuration option of Slic3r, including the properties of the GUI dialogs.
 // Does not store the actual values, but defines default values.
 class PrintConfigDef : public ConfigDef
 {
@@ -334,6 +334,7 @@ class GCodeConfig : public virtual StaticPrintConfig
     ConfigOptionStrings             end_filament_gcode;
     ConfigOptionString              extrusion_axis;
     ConfigOptionFloats              extrusion_multiplier;
+    ConfigOptionBool                fan_percentage;
     ConfigOptionFloats              filament_diameter;
     ConfigOptionFloats              filament_density;
     ConfigOptionFloats              filament_cost;
@@ -381,6 +382,7 @@ class GCodeConfig : public virtual StaticPrintConfig
         OPT_PTR(end_filament_gcode);
         OPT_PTR(extrusion_axis);
         OPT_PTR(extrusion_multiplier);
+        OPT_PTR(fan_percentage);
         OPT_PTR(filament_diameter);
         OPT_PTR(filament_density);
         OPT_PTR(filament_cost);

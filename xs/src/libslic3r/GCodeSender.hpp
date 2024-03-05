@@ -1,19 +1,29 @@
 #ifndef slic3r_GCodeSender_hpp_
 #define slic3r_GCodeSender_hpp_
-#ifdef BOOST_LIBS
 
 #include "libslic3r.h"
 #include <queue>
 #include <string>
 #include <vector>
 #include <boost/asio.hpp>
+
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 107300
+#include <boost/bind/bind.hpp>
+#else
 #include <boost/bind.hpp>
+#endif
 #include <boost/thread.hpp>
 #include <boost/core/noncopyable.hpp>
 
 namespace Slic3r {
 
 namespace asio = boost::asio;
+
+#if BOOST_VERSION >= 107300
+using boost::placeholders::_1;
+using boost::placeholders::_2;
+#endif
 
 class GCodeSender : private boost::noncopyable {
     public:
@@ -72,5 +82,4 @@ class GCodeSender : private boost::noncopyable {
 
 }
 
-#endif
 #endif
