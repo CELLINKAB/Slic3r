@@ -145,6 +145,9 @@ sub export {
     # disable fan
     print $fh $gcodegen->writer->set_fan(0, 1)
         if $self->config->cooling && $self->config->disable_fan_first_layers;
+  
+    # set initial extruder so it can be used in start G-code
+    print $fh $gcodegen->set_extruder($self->print->extruders->[0]);
     
     # set bed temperature
     if ($self->config->has_heatbed && (my $temp = $self->config->first_layer_bed_temperature) && $self->config->start_gcode !~ /M(?:190|140)/i) {
@@ -225,9 +228,6 @@ sub export {
             }
         }
     }
-    
-    # set initial extruder only after custom start G-code
-    print $fh $gcodegen->set_extruder($self->print->extruders->[0]);
     
     # do all objects for each layer
     if ($self->config->complete_objects) {
@@ -328,6 +328,7 @@ sub export {
 
     print $fh $gcodegen->writer->update_progress($gcodegen->layer_count, $gcodegen->layer_count, 1);  # 100%
     print $fh $gcodegen->writer->postamble;
+    print $fh $gcodegen->cog_stats;
     
     # get filament stats
     $self->print->clear_filament_stats;
@@ -341,26 +342,26 @@ sub export {
         my $filament_weight = $extruded_volume * $extruder->filament_density / 1000;
         my $filament_cost = $filament_weight * ($extruder->filament_cost / 1000);
         $self->print->set_filament_stats($extruder->id, $used_filament);
-        
-        printf $fh "; filament used = %.1fmm (%.1fcm3)\n",
-            $used_filament, $extruded_volume/1000;
+
+        printf $fh "; filament_length_m = %.4f \n", $used_filament/1000;
+        printf $fh "; filament_volume_cm3 = %.4f\n", $extruded_volume/1000;
         if ($filament_weight > 0) {
             $self->print->total_weight($self->print->total_weight + $filament_weight);
-            printf $fh "; filament used = %.1fg\n",
+            printf $fh "; filament mass_g = %.2f\n",
                    $filament_weight;
             if ($filament_cost > 0) {
                 $self->print->total_cost($self->print->total_cost + $filament_cost);
-                printf $fh "; filament cost = %.1f\n",
+                printf $fh "; filament_cost = %.2f\n",
                        $filament_cost;
             }
         }
-        
+
         $self->print->total_used_filament($self->print->total_used_filament + $used_filament);
         $self->print->total_extruded_volume($self->print->total_extruded_volume + $extruded_volume);
     }
-    printf $fh "; total filament cost = %.1f\n",
+    printf $fh "; total_filament_cost = %.1f\n",
            $self->print->total_cost;
-    
+
     # append full config
     print $fh "\n";
     foreach my $config ($self->print->config, $self->print->default_object_config, $self->print->default_region_config) {

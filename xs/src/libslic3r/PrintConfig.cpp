@@ -450,6 +450,12 @@ PrintConfigDef::PrintConfigDef()
         def->default_value = opt;
     }
 
+    def = this->add("fan_percentage", coBool);
+    def->label = __TRANS("Fan PWM from 0-100");
+    def->tooltip = __TRANS("Set this if your printer uses control values from 0-100 instead of 0-255.");
+    def->cli = "fan-percentage";
+    def->default_value = new ConfigOptionBool(false);
+
     def = this->add("filament_diameter", coFloats);
     def->label = __TRANS("Diameter");
     def->tooltip = __TRANS("Enter your filament diameter here. Good precision is required, so use a caliper and do multiple measurements along the filament, then compute the average.");
@@ -2007,6 +2013,12 @@ CLIActionsConfigDef::CLIActionsConfigDef()
     def->tooltip = __TRANS("Save configuration to the specified file.");
     def->cli = "save";
     def->default_value = new ConfigOptionString();
+
+    def = this->add("print", coBool);
+    def->label = __TRANS("Send G-code");
+    def->tooltip = __TRANS("Send G-code to a printer.");
+    def->cli = "print";
+    def->default_value = new ConfigOptionBool(false);
 }
 
 CLITransformConfigDef::CLITransformConfigDef()
@@ -2131,6 +2143,11 @@ CLIMiscConfigDef::CLIMiscConfigDef()
     def->label = __TRANS("Output File");
     def->tooltip = __TRANS("The file where the output will be written (if not specified, it will be based on the input file).");
     def->cli = "output|o";
+
+    def = this->add("gcode_file", coString);
+    def->label = __TRANS("G-code file");
+    def->tooltip = __TRANS("The G-code file to send to the printer.");
+    def->cli = "gcode-file";
     
     #ifdef USE_WX
     def = this->add("autosave", coString);
