@@ -1,6 +1,8 @@
 #include "SupportMaterial.hpp"
 #include "Log.hpp"
 
+using namespace boost::placeholders;
+
 namespace Slic3r
 {
 
@@ -1186,8 +1188,9 @@ SupportMaterial::p(SurfacesPtr &surfaces)
 void
 SupportMaterial::append_polygons(Polygons &dst, Polygons &src)
 {
-    for (const auto polygon : src) {
-        dst.push_back(polygon);
+    for (const auto &polygon : src)
+    {
+        dst.emplace_back(polygon);
     }
 }
 

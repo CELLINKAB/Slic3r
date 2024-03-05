@@ -8,6 +8,8 @@
 #include <complex>
 #include <cstdio>
 
+using namespace boost::placeholders;
+
 namespace Slic3r {
 
 void
