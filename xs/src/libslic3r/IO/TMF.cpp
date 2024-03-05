@@ -106,7 +106,8 @@ bool
 TMFEditor::write_metadata(boost::nowide::ofstream& fout)
 {
     // Write the model metadata.
-    for (const auto metadata : model->metadata){
+    for (const auto &metadata : model->metadata)
+    {
         fout << "    <metadata name=\"" << metadata.first << "\">" << metadata.second << "</metadata>\n";
     }
 

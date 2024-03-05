@@ -186,7 +186,7 @@ Print::make_skirt()
         // get object layers up to this->skirt_height_z
         for (const auto* layer : object->layers) {
             if (layer->print_z > this->skirt_height_z) break;
-            for (const ExPolygon ex : layer->slices)
+            for (const ExPolygon &ex : layer->slices)
                 append_to(object_points, static_cast<Points>(ex));
         }
         
