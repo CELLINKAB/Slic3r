@@ -247,7 +247,7 @@ target_compile_features(libslic3r PUBLIC cxx_std_11)
 target_include_directories(libslic3r SYSTEM PUBLIC ${SLIC3R_INCLUDES})
 target_include_directories(libslic3r PUBLIC ${LIBSLIC3R_INCLUDES})
 if (BOOST_NOWIDE_FOUND)
-    target_compile_definitions(libslic3r PUBLIC BOOST_INCLUDE_NOWIDE)
+    target_compile_definitions(libslic3r PUBLIC BOOST_INCLUDE_NOWIDE=1 BOOST_NOWIDE_FOUND=1)
 endif()
 
 add_library(BSpline STATIC
