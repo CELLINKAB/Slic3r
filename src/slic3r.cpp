@@ -1,3 +1,5 @@
+#include <boost/asio/socket_base.hpp> // include winsock2.h first
+
 #include "slic3r.hpp"
 #include "GCodeSender.hpp"
 #include "Geometry.hpp"
@@ -8,19 +10,21 @@
 #include "SimplePrint.hpp"
 #include "TriangleMesh.hpp"
 #include "libslic3r.h"
-#include <cmath>
-#include <chrono>
-#include <cstdio>
-#include <string>
-#include <cstring>
-#include <iomanip>
-#include <iostream>
-#include <math.h>
+
 #include <boost/filesystem.hpp>
 #include <boost/nowide/args.hpp>
 #include <boost/nowide/iostream.hpp>
-#include <stdexcept>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <math.h>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <string>
 
 #ifdef USE_WX

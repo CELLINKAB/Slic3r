@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <future>
 #include <chrono>
+#include <array>
 
 using namespace Slic3r;
 using namespace std;

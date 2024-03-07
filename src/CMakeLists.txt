@@ -250,6 +250,10 @@ if (BOOST_NOWIDE_FOUND)
     target_compile_definitions(libslic3r PUBLIC BOOST_INCLUDE_NOWIDE=1 BOOST_NOWIDE_FOUND=1)
 endif()
 
+if(NOT(${Boost_VERSION_STRING} VERSION_LESS "1.74.0"))
+    target_compile_definitions(libslic3r PUBLIC BOOST_BIND_GLOBAL_PLACEHOLDERS=1)
+endif()
+
 add_library(BSpline STATIC
     ${LIBDIR}/BSpline/BSpline.cpp
 )
