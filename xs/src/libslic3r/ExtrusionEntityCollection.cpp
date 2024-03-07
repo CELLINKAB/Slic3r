@@ -224,7 +224,8 @@ ExtrusionEntityCollection::items_count() const
 void
 ExtrusionEntityCollection::flatten(ExtrusionEntityCollection* retval, bool preserve_ordering) const
 {
-    if (this->no_sort and preserve_ordering) {
+    if (this->no_sort && preserve_ordering)
+    {
         /// if we want to preserve ordering and we can't sort, break out the unsorted ones first.
         ExtrusionEntityCollection *unsortable = new ExtrusionEntityCollection(*this);
         retval->append(*unsortable);
@@ -238,7 +239,9 @@ ExtrusionEntityCollection::flatten(ExtrusionEntityCollection* retval, bool prese
                 unsortable->append(**it);
             }
         }
-    } else {
+    }
+    else
+    {
         for (ExtrusionEntitiesPtr::const_iterator it = this->entities.begin(); it != this->entities.end(); ++it) {
             if ((*it)->is_collection()) {
                 ExtrusionEntityCollection* collection = dynamic_cast<ExtrusionEntityCollection*>(*it);
