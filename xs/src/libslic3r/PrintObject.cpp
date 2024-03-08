@@ -17,10 +17,6 @@ using namespace boost::placeholders;
 
 namespace Slic3r {
 
-#if BOOST_VERSION >= 107300
-using boost::placeholders::_1;
-#endif
-
 PrintObject::PrintObject(Print* print, ModelObject* model_object, const BoundingBoxf3 &modobj_bbox)
 :   layer_height_spline(model_object->layer_height_spline),
     typed_slices(false),

@@ -24,12 +24,9 @@
 #include "SVG.hpp"
 #endif
 
+using namespace boost::placeholders;
+
 namespace Slic3r {
-
-
-#if BOOST_VERSION >= 107300
-using boost::placeholders::_1;
-#endif
 
 TriangleMesh::TriangleMesh()
     : repaired(false)

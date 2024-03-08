@@ -6,8 +6,12 @@
 #include <map>
 #include <numeric>
 #include <vector>
+#include <boost/version.hpp>
+#if BOOST_VERSION >= 107300
+#include <boost/bind/bind.hpp>
+#else
 #include <boost/bind.hpp>
-
+#endif
 #include "libslic3r.h"
 
 #include "ClipperUtils.hpp"
@@ -22,6 +26,7 @@
 #include "SVG.hpp"
 
 using namespace std;
+using namespace boost::placeholders;
 
 namespace Slic3r
 {
