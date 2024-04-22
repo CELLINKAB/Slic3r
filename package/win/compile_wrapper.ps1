@@ -1,8 +1,8 @@
 # Short Powershell script to build a wrapper exec
 Param
 (
-    [string]$perlVersion = "524",
-    [string]$STRAWBERRY_PATH = "C:\Strawberry",
+    [string]$perlVersion = "532",
+    [string]$STRAWBERRY_PATH = "C:\StrawberryPerl",
     # Path to C++ compiler, or just name if it is in path
     [string]$cxx = "g++"
 )
