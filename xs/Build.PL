@@ -97,7 +97,7 @@ if ($ENV{SLIC3R_DEBUG}) {
 }
 if ($cpp_guess->is_gcc) {
     # our templated XS bindings cause undefined-var-template warnings
-    push @cflags, qw(-Wno-undefined-var-template);
+    #push @cflags, qw(-Wno-undefined-var-template);
 }
 
 my $build = Module::Build::WithXSpp->new(
